@@ -67,7 +67,12 @@ function App() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000, // 30 second timeout
+        timeout: 60000, // Increased timeout to 60 seconds
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        onUploadProgress: (progressEvent) => {
+          console.log('Upload progress:', progressEvent);
+        }
       });
 
       console.log('Response:', response.data);
