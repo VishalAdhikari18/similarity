@@ -4,6 +4,7 @@ const cors = require('cors');
 const natural = require('natural');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -18,8 +19,8 @@ app.use(express.json());
 // Configure multer for file upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Use /tmp for Heroku
-    const uploadDir = process.env.NODE_ENV === 'production' ? '/tmp' : 'uploads';
+    // Use system temp directory for all environments
+    const uploadDir = path.join(os.tmpdir(), 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -32,6 +33,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 2
+  },
   fileFilter: (req, file, cb) => {
     // Accept only text files
     if (file.mimetype === 'text/plain' || file.originalname.endsWith('.txt')) {

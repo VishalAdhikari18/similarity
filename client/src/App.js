@@ -63,13 +63,24 @@ function App() {
 
     try {
       console.log('Sending files:', files.map(f => ({ name: f.name, size: f.size })));
+      
+      // First check if the server is available
+      try {
+        await axios.get(`${API_URL}/api/health`, { timeout: 5000 });
+      } catch (healthErr) {
+        console.error('Server health check failed:', healthErr);
+        setError('Server is currently unavailable. Please try again later.');
+        setLoading(false);
+        return;
+      }
+      
       const response = await axios.post(`${API_URL}/api/compare`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 60000, // Increased timeout to 60 seconds
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
+        timeout: 120000, // 2 minute timeout
+        maxContentLength: 10 * 1024 * 1024, // 10MB
+        maxBodyLength: 10 * 1024 * 1024, // 10MB
         onUploadProgress: (progressEvent) => {
           console.log('Upload progress:', progressEvent);
         }
@@ -79,9 +90,22 @@ function App() {
       setResult(response.data);
     } catch (err) {
       console.error('Error:', err);
-      const errorMessage = err.response?.data?.details || 
-                          err.response?.data?.error || 
-                          'An error occurred while comparing documents';
+      
+      let errorMessage = 'An error occurred while comparing documents';
+      
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please try again with smaller files.';
+      } else if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        errorMessage = err.response.data?.details || 
+                      err.response.data?.error || 
+                      `Server error: ${err.response.status}`;
+      } else if (err.request) {
+        // The request was made but no response was received
+        errorMessage = 'No response from server. Please try again later.';
+      }
+      
       setError(errorMessage);
     } finally {
       setLoading(false);
